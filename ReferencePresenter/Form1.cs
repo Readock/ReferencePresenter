@@ -162,7 +162,7 @@ namespace ReferencePresenter {
             cm.MenuItems.Add(menuItemGrayscale);
         }
         private void AddFlippOption(ContextMenu cm) {
-            var flipp = new MenuItem("flipp horizontal");
+            var flipp = new MenuItem("flip horizontal");
             flipp.Click += (a, b) => {
                 CurrentImageGrayscale?.RotateFlip(RotateFlipType.RotateNoneFlipX);
                 CurrentImage?.RotateFlip(RotateFlipType.RotateNoneFlipX);
