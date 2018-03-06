@@ -16,6 +16,7 @@ namespace ReferencePresenter {
 
         private Image CurrentImage;
         private Bitmap CurrentImageGrayscale;
+        private Task GrayScaleLoader;
 
         private const int cGrip = 20;      // Grip size
         private const int cCaption = 15;   // Caption bar height;
@@ -71,11 +72,12 @@ namespace ReferencePresenter {
             CurrentImageGrayscale = new Bitmap((Image)CurrentImage.Clone());
             if (autoResize)
                 ResizeForm();
-            new Thread(() => {
+            GrayScaleLoader = new Task(() => {
                 CurrentImageGrayscale = ConvertToGrayScale(CurrentImageGrayscale);
                 if (grayscale)
                     pictureBox1.Invoke(new Action(() => { pictureBox1.Image = CurrentImageGrayscale; }));
-            }).Start();
+            });
+            GrayScaleLoader.Start();
         }
 
         private void InitEventListener() {
@@ -152,6 +154,7 @@ namespace ReferencePresenter {
 
         private void AddGrayScaleOption(ContextMenu cm) {
             menuItemGrayscale.Click += (a, b) => {
+                GrayScaleLoader.Wait();
                 if (grayscale)
                     pictureBox1.Image = CurrentImage;
                 else
@@ -164,6 +167,7 @@ namespace ReferencePresenter {
         private void AddFlippOption(ContextMenu cm) {
             var flipp = new MenuItem("flip horizontal");
             flipp.Click += (a, b) => {
+                GrayScaleLoader.Wait();
                 CurrentImageGrayscale?.RotateFlip(RotateFlipType.RotateNoneFlipX);
                 CurrentImage?.RotateFlip(RotateFlipType.RotateNoneFlipX);
                 pictureBox1.Image = pictureBox1.Image;
