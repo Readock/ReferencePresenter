@@ -24,7 +24,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "explorerintegration"; Description: "Creates open with dialog in explorer"; GroupDescription: "Windows Explorer integration:"; Flags: checkedonce          
 
 [Files]
-Source: "C:\Users\Readock\Documents\Visual Studio 2015\Projects\ReferencePresenter\ReferencePresenter\bin\Release\ReferencePresenter.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\ReferencePresenter\bin\Release\ReferencePresenter.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
