@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -21,6 +22,7 @@ namespace ReferencePresenter {
         private const int cGrip = 20;      // Grip size
         private const int cCaption = 15;   // Caption bar height;
 
+        private string currentFilePath;
         private bool mouseDown;
         private Point lastLocation;
         private bool borderVisible = true;
@@ -56,7 +58,7 @@ namespace ReferencePresenter {
             this.TopMost = alwaysOnTop;
         }
 
-        public void LoadImage(string file) {
+        public bool LoadImage(string file) {
             if (label1.Visible) {
                 label1.Visible = false;
                 label2.Visible = false;
@@ -65,19 +67,21 @@ namespace ReferencePresenter {
                 CurrentImage = Image.FromFile(file);
             } catch (Exception e) {
                 MessageBox.Show("Could not load image!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
+                return false;
             }
+            currentFilePath = file;
             pictureBox1.Image = CurrentImage;
             menuItemGrayscale.Checked = false;
             CurrentImageGrayscale = new Bitmap((Image)CurrentImage.Clone());
             if (autoResize)
-                ResizeForm();
+                ResizeFormWithSamePerimeter();
             GrayScaleLoader = new Task(() => {
                 CurrentImageGrayscale = ConvertToGrayScale(CurrentImageGrayscale);
                 if (grayscale)
                     pictureBox1.Invoke(new Action(() => { pictureBox1.Image = CurrentImageGrayscale; }));
             });
             GrayScaleLoader.Start();
+            return true;
         }
 
         private void InitEventListener() {
@@ -99,13 +103,17 @@ namespace ReferencePresenter {
             ContextMenu cm = new ContextMenu();
 
             AddChangeImageOption(cm);
-            AddResizeOption(cm);
+            cm.MenuItems.Add("-");
+            AddNextImageOption(cm);
+            AddPreviousImageOption(cm);
+            AddRandomImageOption(cm);
             cm.MenuItems.Add("-");
 
             AddGrayScaleOption(cm);
             AddFlippOption(cm);
             cm.MenuItems.Add("-");
 
+            //AddResizeOption(cm);
             AddToggleWindowBorderOption(cm);
             AddAutoResizeOption(cm);
             AddToggleAlwaysOnTopOption(cm);
@@ -192,6 +200,49 @@ namespace ReferencePresenter {
             cm.MenuItems.Add(itemResize);
         }
 
+        private void AddRandomImageOption(ContextMenu cm) {
+            var itemChangeImage = new MenuItem("[?] random file in folder");
+            itemChangeImage.Click += (a, b) => {
+                if (!File.Exists(currentFilePath))
+                    return;
+                var files = Directory.GetFiles(Path.GetDirectoryName(currentFilePath));
+                LoadImage(files[new Random().Next(0, files.Count())]);
+            };
+            cm.MenuItems.Add(itemChangeImage);
+        }
+
+        private void AddPreviousImageOption(ContextMenu cm) {
+            var itemChangeImage = new MenuItem("[<] previous file");
+            itemChangeImage.Click += (a, b) => {
+                if (!File.Exists(currentFilePath))
+                    return;
+                var files = Directory.GetFiles(Path.GetDirectoryName(currentFilePath));
+                for (int i = 0; i < files.Count(); i++) {
+                    if (Path.GetFullPath(files[i]) == Path.GetFullPath(currentFilePath)) {
+                        LoadImage(files[(i - 1 + files.Count()) % files.Count()]);
+                        return;
+                    }
+                }
+            };
+            cm.MenuItems.Add(itemChangeImage);
+        }
+
+        private void AddNextImageOption(ContextMenu cm) {
+            var itemChangeImage = new MenuItem("[>] next file");
+            itemChangeImage.Click += (a, b) => {
+                if (!File.Exists(currentFilePath))
+                    return;
+                var files = Directory.GetFiles(Path.GetDirectoryName(currentFilePath));
+                for (int i = 0; i < files.Count(); i++) {
+                    if (Path.GetFullPath(files[i]) == Path.GetFullPath(currentFilePath)) {
+                        LoadImage(files[(i + 1) % files.Count()]);
+                        return;
+                    }
+                }
+            };
+            cm.MenuItems.Add(itemChangeImage);
+        }
+
         private void AddChangeImageOption(ContextMenu cm) {
             var itemChangeImage = new MenuItem("change image");
             itemChangeImage.Click += (a, b) => {
@@ -217,6 +268,26 @@ namespace ReferencePresenter {
             } else {
                 double scale = pictureBox1.Image.Height / (double)this.Height;
                 this.Width = (int)Math.Round(pictureBox1.Image.Width / scale);
+            }
+            this.SetDesktopLocation((int)Math.Round(centerPoint.X - this.Width / 2.0), (int)Math.Round(centerPoint.Y + 0.0 - this.Height / 2.0));
+        }
+
+        private void ResizeFormWithSamePerimeter() {
+            if (CurrentImage == null)
+                return;
+            var centerPoint = new Point(this.Location.X + this.Width / 2, this.Location.Y + this.Height / 2);
+            if (pictureBox1.Image.Width / (double)this.Width > pictureBox1.Image.Height / (double)this.Height) {
+                double scale = pictureBox1.Image.Width / (double)this.Width;
+                double diff = pictureBox1.Image.Height / scale - this.Height;
+                double factor = (this.Height + this.Width) / (this.Height + diff + this.Width);
+                this.Height = (int)Math.Round((this.Height + diff) * factor);
+                this.Width = (int)Math.Round((this.Width) * factor);
+            } else {
+                double scale = pictureBox1.Image.Height / (double)this.Height;
+                double diff = pictureBox1.Image.Width / scale - this.Width;
+                double factor = (this.Height + this.Width) / (this.Height + diff + this.Width);
+                this.Height = (int)Math.Round((this.Height) * factor);
+                this.Width = (int)Math.Round((this.Width + diff) * factor);
             }
             this.SetDesktopLocation((int)Math.Round(centerPoint.X - this.Width / 2.0), (int)Math.Round(centerPoint.Y + 0.0 - this.Height / 2.0));
         }
