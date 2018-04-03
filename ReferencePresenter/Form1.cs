@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -58,7 +59,7 @@ namespace ReferencePresenter {
             this.TopMost = alwaysOnTop;
         }
 
-        public bool LoadImage(string file) {
+        public bool LoadImage(string file, bool showMessage = true) {
             if (label1.Visible) {
                 label1.Visible = false;
                 label2.Visible = false;
@@ -66,7 +67,8 @@ namespace ReferencePresenter {
             try {
                 CurrentImage = Image.FromFile(file);
             } catch (Exception e) {
-                MessageBox.Show("Could not load image!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                if(showMessage)
+                    MessageBox.Show("Could not load image!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
             currentFilePath = file;
@@ -206,7 +208,9 @@ namespace ReferencePresenter {
                 if (!File.Exists(currentFilePath))
                     return;
                 var files = Directory.GetFiles(Path.GetDirectoryName(currentFilePath));
-                LoadImage(files[new Random().Next(0, files.Count())]);
+                int index = new Random().Next(0, files.Count());
+                // Iterate files until one can be opened
+                for (int x = 0; x < files.Count() && !LoadImage(files[(index + x) % files.Count()], false); x++) { }
             };
             cm.MenuItems.Add(itemChangeImage);
         }
@@ -219,7 +223,8 @@ namespace ReferencePresenter {
                 var files = Directory.GetFiles(Path.GetDirectoryName(currentFilePath));
                 for (int i = 0; i < files.Count(); i++) {
                     if (Path.GetFullPath(files[i]) == Path.GetFullPath(currentFilePath)) {
-                        LoadImage(files[(i - 1 + files.Count()) % files.Count()]);
+                        // Iterate files until one can be opened
+                        for(int x= 1; x <= files.Count() && !LoadImage(files[(i - x + files.Count()) % files.Count()], false); x++) { }
                         return;
                     }
                 }
@@ -235,7 +240,8 @@ namespace ReferencePresenter {
                 var files = Directory.GetFiles(Path.GetDirectoryName(currentFilePath));
                 for (int i = 0; i < files.Count(); i++) {
                     if (Path.GetFullPath(files[i]) == Path.GetFullPath(currentFilePath)) {
-                        LoadImage(files[(i + 1) % files.Count()]);
+                        // Iterate files until one can be opened
+                        for (int x = 1; x <= files.Count() && !LoadImage(files[(i + x) % files.Count()], false); x++) { }
                         return;
                     }
                 }
@@ -359,17 +365,39 @@ namespace ReferencePresenter {
             LoadImage(files.First());
         }
 
-        public Bitmap ConvertToGrayScale(Bitmap Bmp) {
-            int rgb;
-            Color c;
+        public Bitmap ConvertToGrayScale(Bitmap original) {
+            // https://web.archive.org/web/20130111215043/http://www.switchonthecode.com/tutorials/csharp-tutorial-convert-a-color-image-to-grayscale
+            //create a blank bitmap the same size as original
+            Bitmap newBitmap = new Bitmap(original.Width, original.Height);
 
-            for (int y = 0; y < Bmp.Height; y++)
-                for (int x = 0; x < Bmp.Width; x++) {
-                    c = Bmp.GetPixel(x, y);
-                    rgb = (int)((c.R + c.G + c.B) / 3);
-                    Bmp.SetPixel(x, y, Color.FromArgb(rgb, rgb, rgb));
-                }
-            return Bmp;
+            //get a graphics object from the new image
+            Graphics g = Graphics.FromImage(newBitmap);
+
+            //create the grayscale ColorMatrix
+            ColorMatrix colorMatrix = new ColorMatrix(
+               new float[][]
+               {
+                 new float[] {.3f, .3f, .3f, 0, 0},
+                 new float[] {.59f, .59f, .59f, 0, 0},
+                 new float[] {.11f, .11f, .11f, 0, 0},
+                 new float[] {0, 0, 0, 1, 0},
+                 new float[] {0, 0, 0, 0, 1}
+               });
+
+            //create some image attributes
+            ImageAttributes attributes = new ImageAttributes();
+
+            //set the color matrix attribute
+            attributes.SetColorMatrix(colorMatrix);
+
+            //draw the original image on the new image
+            //using the grayscale color matrix
+            g.DrawImage(original, new Rectangle(0, 0, original.Width, original.Height),
+               0, 0, original.Width, original.Height, GraphicsUnit.Pixel, attributes);
+
+            //dispose the Graphics object
+            g.Dispose();
+            return newBitmap;
         }
     }
 }
