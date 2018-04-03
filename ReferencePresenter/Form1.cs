@@ -30,7 +30,7 @@ namespace ReferencePresenter {
         private bool grayscale = false;
         private bool alwaysOnTop = true;
         private bool autoResize = true;
-        MenuItem menuItemGrayscale = new MenuItem("grayscale");
+        MenuItem menuItemGrayscale = new MenuItem("[G] grayscale");
 
         private const int MINMAX = 100;
         private const double ZOOMFACTOR = 1.2;
@@ -57,6 +57,7 @@ namespace ReferencePresenter {
             this.DoubleBuffered = true;
             this.SetStyle(ControlStyles.ResizeRedraw, true);
             this.TopMost = alwaysOnTop;
+            this.KeyUp += Form_KeyDown;
         }
 
         public bool LoadImage(string file, bool showMessage = true) {
@@ -67,13 +68,13 @@ namespace ReferencePresenter {
             try {
                 CurrentImage = Image.FromFile(file);
             } catch (Exception e) {
-                if(showMessage)
+                if (showMessage)
                     MessageBox.Show("Could not load image!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
             currentFilePath = file;
             pictureBox1.Image = CurrentImage;
-            menuItemGrayscale.Checked = false;
+            //menuItemGrayscale.Checked = false;
             CurrentImageGrayscale = new Bitmap((Image)CurrentImage.Clone());
             if (autoResize)
                 ResizeFormWithSamePerimeter();
@@ -164,25 +165,38 @@ namespace ReferencePresenter {
 
         private void AddGrayScaleOption(ContextMenu cm) {
             menuItemGrayscale.Click += (a, b) => {
-                GrayScaleLoader.Wait();
-                if (grayscale)
-                    pictureBox1.Image = CurrentImage;
-                else
-                    pictureBox1.Image = CurrentImageGrayscale;
-                grayscale = !grayscale;
-                menuItemGrayscale.Checked = grayscale;
+                SwitchToGrayscaleImage();
             };
             cm.MenuItems.Add(menuItemGrayscale);
         }
+
+        private void SwitchToGrayscaleImage() {
+            if (CurrentImage == null)
+                return;
+            GrayScaleLoader.Wait();
+            if (grayscale)
+                pictureBox1.Image = CurrentImage;
+            else
+                pictureBox1.Image = CurrentImageGrayscale;
+            grayscale = !grayscale;
+            menuItemGrayscale.Checked = grayscale;
+        }
+
         private void AddFlippOption(ContextMenu cm) {
-            var flipp = new MenuItem("flip horizontal");
+            var flipp = new MenuItem("[F] flip horizontal");
             flipp.Click += (a, b) => {
-                GrayScaleLoader.Wait();
-                CurrentImageGrayscale?.RotateFlip(RotateFlipType.RotateNoneFlipX);
-                CurrentImage?.RotateFlip(RotateFlipType.RotateNoneFlipX);
-                pictureBox1.Image = pictureBox1.Image;
+                FlippImage();
             };
             cm.MenuItems.Add(flipp);
+        }
+
+        private void FlippImage() {
+            if (CurrentImage == null)
+                return;
+            GrayScaleLoader.Wait();
+            CurrentImageGrayscale?.RotateFlip(RotateFlipType.RotateNoneFlipX);
+            CurrentImage?.RotateFlip(RotateFlipType.RotateNoneFlipX);
+            pictureBox1.Image = pictureBox1.Image;
         }
 
         private void AddToggleWindowBorderOption(ContextMenu cm) {
@@ -203,50 +217,62 @@ namespace ReferencePresenter {
         }
 
         private void AddRandomImageOption(ContextMenu cm) {
-            var itemChangeImage = new MenuItem("[?] random file in folder");
+            var itemChangeImage = new MenuItem("[R] random image");
             itemChangeImage.Click += (a, b) => {
-                if (!File.Exists(currentFilePath))
-                    return;
-                var files = Directory.GetFiles(Path.GetDirectoryName(currentFilePath));
-                int index = new Random().Next(0, files.Count());
-                // Iterate files until one can be opened
-                for (int x = 0; x < files.Count() && !LoadImage(files[(index + x) % files.Count()], false); x++) { }
+                OpenRandomImage();
             };
             cm.MenuItems.Add(itemChangeImage);
+        }
+
+        private void OpenRandomImage() {
+            if (!File.Exists(currentFilePath))
+                return;
+            var files = Directory.GetFiles(Path.GetDirectoryName(currentFilePath));
+            int index = new Random().Next(0, files.Count());
+            // Iterate files until one can be opened
+            for (int x = 0; x < files.Count() && !LoadImage(files[(index + x) % files.Count()], false); x++) { }
         }
 
         private void AddPreviousImageOption(ContextMenu cm) {
             var itemChangeImage = new MenuItem("[<] previous file");
             itemChangeImage.Click += (a, b) => {
-                if (!File.Exists(currentFilePath))
-                    return;
-                var files = Directory.GetFiles(Path.GetDirectoryName(currentFilePath));
-                for (int i = 0; i < files.Count(); i++) {
-                    if (Path.GetFullPath(files[i]) == Path.GetFullPath(currentFilePath)) {
-                        // Iterate files until one can be opened
-                        for(int x= 1; x <= files.Count() && !LoadImage(files[(i - x + files.Count()) % files.Count()], false); x++) { }
-                        return;
-                    }
-                }
+                OpenPreviousFile();
             };
             cm.MenuItems.Add(itemChangeImage);
+        }
+
+        private void OpenPreviousFile() {
+            if (!File.Exists(currentFilePath))
+                return;
+            var files = Directory.GetFiles(Path.GetDirectoryName(currentFilePath));
+            for (int i = 0; i < files.Count(); i++) {
+                if (Path.GetFullPath(files[i]) == Path.GetFullPath(currentFilePath)) {
+                    // Iterate files until one can be opened
+                    for (int x = 1; x <= files.Count() && !LoadImage(files[(i - x + files.Count()) % files.Count()], false); x++) { }
+                    return;
+                }
+            }
         }
 
         private void AddNextImageOption(ContextMenu cm) {
             var itemChangeImage = new MenuItem("[>] next file");
             itemChangeImage.Click += (a, b) => {
-                if (!File.Exists(currentFilePath))
-                    return;
-                var files = Directory.GetFiles(Path.GetDirectoryName(currentFilePath));
-                for (int i = 0; i < files.Count(); i++) {
-                    if (Path.GetFullPath(files[i]) == Path.GetFullPath(currentFilePath)) {
-                        // Iterate files until one can be opened
-                        for (int x = 1; x <= files.Count() && !LoadImage(files[(i + x) % files.Count()], false); x++) { }
-                        return;
-                    }
-                }
+                OpenNextFile();
             };
             cm.MenuItems.Add(itemChangeImage);
+        }
+
+        private void OpenNextFile() {
+            if (!File.Exists(currentFilePath))
+                return;
+            var files = Directory.GetFiles(Path.GetDirectoryName(currentFilePath));
+            for (int i = 0; i < files.Count(); i++) {
+                if (Path.GetFullPath(files[i]) == Path.GetFullPath(currentFilePath)) {
+                    // Iterate files until one can be opened
+                    for (int x = 1; x <= files.Count() && !LoadImage(files[(i + x) % files.Count()], false); x++) { }
+                    return;
+                }
+            }
         }
 
         private void AddChangeImageOption(ContextMenu cm) {
@@ -399,5 +425,19 @@ namespace ReferencePresenter {
             g.Dispose();
             return newBitmap;
         }
+
+        private void Form_KeyDown(object sender, KeyEventArgs e) {
+            if (e.KeyCode == Keys.Left)
+                OpenPreviousFile();
+            if (e.KeyCode == Keys.Right)
+                OpenNextFile();
+            if (e.KeyCode == Keys.F)
+                FlippImage();
+            if (e.KeyCode == Keys.G)
+                SwitchToGrayscaleImage();
+            if (e.KeyCode == Keys.R)
+                OpenRandomImage();
+        }
+
     }
 }

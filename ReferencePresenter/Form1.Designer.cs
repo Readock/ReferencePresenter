@@ -80,6 +80,7 @@
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.pictureBox1);
+            this.KeyPreview = true;
             this.MinimumSize = new System.Drawing.Size(20, 39);
             this.Name = "Form1";
             this.Text = "ReferencePresenter";
