@@ -5,11 +5,9 @@ Very simple image viewer for references
 - Always on top
 - Grayscale
 - Flip image
+- View random image
 
 You can download the program [here](https://github.com/Readock/ReferencePresenter/releases)
 
-![image](https://i.imgur.com/hMNLYSs.png "Reference Presenter")
 
-
-![image](https://media.giphy.com/media/1hAZF0RJ1zifmXjBbE/giphy.gif "Reference Presenter  usage")
-
+![image](https://github.com/Readock/ReferencePresenter/blob/master/Demo.gif "Reference Presenter  usage")
