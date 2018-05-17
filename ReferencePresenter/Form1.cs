@@ -61,10 +61,6 @@ namespace ReferencePresenter {
         }
 
         public bool LoadImage(string file, bool showMessage = true) {
-            if (label1.Visible) {
-                label1.Visible = false;
-                label2.Visible = false;
-            }
             try {
                 CurrentImage = Image.FromFile(file);
             } catch (Exception e) {
@@ -73,6 +69,12 @@ namespace ReferencePresenter {
                 return false;
             }
             currentFilePath = file;
+            UpdateImage(CurrentImage);
+            return true;
+        }
+
+        private void UpdateImage(Image newImage) {
+            CurrentImage = newImage;
             pictureBox1.Image = CurrentImage;
             //menuItemGrayscale.Checked = false;
             CurrentImageGrayscale = new Bitmap((Image)CurrentImage.Clone());
@@ -84,7 +86,10 @@ namespace ReferencePresenter {
                     pictureBox1.Invoke(new Action(() => { pictureBox1.Image = CurrentImageGrayscale; }));
             });
             GrayScaleLoader.Start();
-            return true;
+            if (label1.Visible) {
+                label1.Visible = false;
+                label2.Visible = false;
+            }
         }
 
         private void InitEventListener() {
@@ -106,7 +111,10 @@ namespace ReferencePresenter {
             ContextMenu cm = new ContextMenu();
 
             AddChangeImageOption(cm);
+            AddCopyOption(cm);
+            AddPasteOption(cm);
             cm.MenuItems.Add("-");
+
             AddNextImageOption(cm);
             AddPreviousImageOption(cm);
             AddRandomImageOption(cm);
@@ -115,6 +123,7 @@ namespace ReferencePresenter {
             AddGrayScaleOption(cm);
             AddFlippOption(cm);
             cm.MenuItems.Add("-");
+
 
             //AddResizeOption(cm);
             AddToggleWindowBorderOption(cm);
@@ -168,6 +177,40 @@ namespace ReferencePresenter {
                 SwitchToGrayscaleImage();
             };
             cm.MenuItems.Add(menuItemGrayscale);
+        }
+
+
+        private void AddCopyOption(ContextMenu cm) {
+            var itemCopy = new MenuItem("[ctrl+c] copy image");
+            itemCopy.Click += (a, b) => {
+                CopyImageToClipboard();
+            };
+            cm.MenuItems.Add(itemCopy);
+        }
+
+        private void CopyImageToClipboard() {
+            if (pictureBox1.Image == null)
+                return;
+            Clipboard.SetImage(pictureBox1.Image);
+        }
+
+        private void AddPasteOption(ContextMenu cm) {
+            var itemCopy = new MenuItem("[ctrl+v] paste image");
+            itemCopy.Click += (a, b) => {
+                OpenImageFromClipboard();
+            };
+            cm.MenuItems.Add(itemCopy);
+        }
+
+        private void OpenImageFromClipboard() {
+            var img = Clipboard.GetImage();
+            if (img == null) {
+                if (Clipboard.GetFileDropList().Count >= 1)
+                    LoadImage(Clipboard.GetFileDropList()[0]);
+                return;
+            }
+            currentFilePath = null;
+            UpdateImage(img);
         }
 
         private void SwitchToGrayscaleImage() {
@@ -437,6 +480,10 @@ namespace ReferencePresenter {
                 SwitchToGrayscaleImage();
             if (e.KeyCode == Keys.R)
                 OpenRandomImage();
+            if (e.KeyCode == Keys.C && e.Modifiers.HasFlag(Keys.Control))
+                CopyImageToClipboard();
+            if (e.KeyCode == Keys.V && e.Modifiers.HasFlag(Keys.Control))
+                OpenImageFromClipboard();
         }
 
     }
